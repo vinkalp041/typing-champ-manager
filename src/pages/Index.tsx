@@ -8,13 +8,17 @@ import { StudentDetailModal } from '@/components/Student/StudentDetailModal';
 import { TopWinnersPanel } from '@/components/Ranking/TopWinnersPanel';
 import { RankingTable } from '@/components/Ranking/RankingTable';
 import { ComparisonPanel } from '@/components/Comparison/ComparisonPanel';
+import { AnalyticsDashboard } from '@/components/Analytics/AnalyticsDashboard';
+import { CSVImportModal } from '@/components/Import/CSVImportModal';
 import { useCompetition } from '@/store/CompetitionContext';
 import { Button } from '@/components/ui/button';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Student } from '@/types';
-import { ArrowLeftRight } from 'lucide-react';
+import { exportResultsToPDF } from '@/utils/pdfExport';
+import { ArrowLeftRight, FileDown, BarChart3, Trophy } from 'lucide-react';
 
 const Index = () => {
-  const { getRankedStudents, activeBatchId, deleteStudent, batches } = useCompetition();
+  const { getRankedStudents, activeBatchId, deleteStudent, batches, getBatchById } = useCompetition();
   
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
   const [showDetailModal, setShowDetailModal] = useState(false);
@@ -22,6 +26,7 @@ const Index = () => {
   const [compareStudent, setCompareStudent] = useState<Student | null>(null);
 
   const rankedStudents = getRankedStudents(activeBatchId);
+  const activeBatch = activeBatchId ? getBatchById(activeBatchId) : null;
 
   const handleViewStudent = (student: Student) => {
     setSelectedStudent(student);
@@ -40,6 +45,10 @@ const Index = () => {
     }
   };
 
+  const handleExportPDF = () => {
+    exportResultsToPDF(rankedStudents, activeBatch?.batchName);
+  };
+
   return (
     <div className="min-h-screen bg-background">
       <Header />
@@ -51,6 +60,7 @@ const Index = () => {
         <div className="flex flex-wrap items-center gap-3 mb-6">
           <CreateBatchModal />
           <StudentEntryForm />
+          <CSVImportModal />
           <div className="flex-1" />
           <BatchSelector />
           <Button 
@@ -61,6 +71,15 @@ const Index = () => {
           >
             <ArrowLeftRight className="h-4 w-4" />
             Compare
+          </Button>
+          <Button 
+            variant="outline" 
+            onClick={handleExportPDF}
+            className="gap-2"
+            disabled={rankedStudents.length === 0}
+          >
+            <FileDown className="h-4 w-4" />
+            Export PDF
           </Button>
         </div>
 
@@ -77,27 +96,44 @@ const Index = () => {
           </div>
         )}
 
-        {/* Results Section */}
+        {/* Main Content with Tabs */}
         {batches.length > 0 && (
-          <div className="space-y-6">
-            <TopWinnersPanel students={rankedStudents} />
-            
-            <div className="card-elevated p-4">
-              <h2 className="text-lg font-semibold mb-4">
-                Full Rankings
-                {activeBatchId && (
-                  <span className="text-muted-foreground font-normal text-sm ml-2">
-                    (Filtered)
-                  </span>
-                )}
-              </h2>
-              <RankingTable
-                students={rankedStudents}
-                onViewStudent={handleViewStudent}
-                onDeleteStudent={handleDeleteStudent}
-              />
-            </div>
-          </div>
+          <Tabs defaultValue="rankings" className="space-y-6">
+            <TabsList className="grid w-full max-w-md grid-cols-2">
+              <TabsTrigger value="rankings" className="gap-2">
+                <Trophy className="h-4 w-4" />
+                Rankings
+              </TabsTrigger>
+              <TabsTrigger value="analytics" className="gap-2">
+                <BarChart3 className="h-4 w-4" />
+                Analytics
+              </TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="rankings" className="space-y-6">
+              <TopWinnersPanel students={rankedStudents} />
+              
+              <div className="card-elevated p-4">
+                <h2 className="text-lg font-semibold mb-4">
+                  Full Rankings
+                  {activeBatchId && (
+                    <span className="text-muted-foreground font-normal text-sm ml-2">
+                      (Filtered by {activeBatch?.batchName})
+                    </span>
+                  )}
+                </h2>
+                <RankingTable
+                  students={rankedStudents}
+                  onViewStudent={handleViewStudent}
+                  onDeleteStudent={handleDeleteStudent}
+                />
+              </div>
+            </TabsContent>
+
+            <TabsContent value="analytics">
+              <AnalyticsDashboard />
+            </TabsContent>
+          </Tabs>
         )}
       </main>
 
